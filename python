@@ -1,0 +1,102 @@
+%%writefile app.py
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# 1. Khởi tạo dữ liệu
+data = {
+    'Họ và tên': [
+        'Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C', 'Phạm Thị D', 'Hoàng Văn E',
+        'Huỳnh Thị F', 'Phan Văn G', 'Vũ Thị H', 'Đặng Văn I', 'Bùi Thị K'
+    ],
+    'Điểm chuyên cần': [10, 9, 8, 10, 7, 9, 8, 10, 6, 9],
+    'Điểm giữa kỳ': [8.5, 7.0, 6.5, 9.0, 5.5, 8.0, 7.5, 9.5, 5.0, 8.0],
+    'Điểm cuối kỳ': [9.0, 8.0, 7.0, 8.5, 6.0, 8.5, 7.0, 9.0, 5.5, 8.5]
+}
+
+df_students = pd.DataFrame(data)
+
+# 2. Tính điểm tổng kết & Xếp loại
+df_students['Tong_ket'] = 0.2 * df_students['Điểm chuyên cần'] + 0.3 * df_students['Điểm giữa kỳ'] + 0.5 * df_students['Điểm cuối kỳ']
+
+def phan_loai(diem):
+    if diem >= 8.5:
+        return 'Giỏi'
+    elif diem >= 7.0:
+        return 'Khá'
+    elif diem >= 5.0:
+        return 'Trung bình'
+    else:
+        return 'Yếu'
+
+df_students['Xep_loai'] = df_students['Tong_ket'].apply(phan_loai)
+
+# --- Giao diện Streamlit ---
+st.set_page_config(page_title="Quản lý điểm sinh viên", layout="wide")
+
+# Tiêu đề
+st.title("QUẢN LÝ ĐIỂM SINH VIÊN")
+
+# Hiển thị bảng điểm đầy đủ
+st.subheader("📊 Bảng điểm chi tiết")
+st.dataframe(df_students, use_container_width=True)
+
+# Thống kê
+st.subheader("📈 Số liệu thống kê")
+col1, col2, col3, col4 = st.columns(4)
+
+diem_tb = df_students['Tong_ket'].mean()
+sv_max = df_students.loc[df_students['Tong_ket'].idxmax()]
+sv_min = df_students.loc[df_students['Tong_ket'].idxmin()]
+sv_dat = df_students[df_students['Tong_ket'] >= 5.0].shape[0]
+
+with col1:
+    st.metric(label="Điểm trung bình lớp", value=f"{diem_tb:.2f}")
+with col2:
+    st.metric(label="Thủ khoa", value=f"{sv_max['Họ và tên']}", delta=f"{sv_max['Tong_ket']:.2f} điểm")
+with col3:
+    st.metric(label="Điểm thấp nhất", value=f"{sv_min['Họ và tên']}", delta=f"{sv_min['Tong_ket']:.2f} điểm", delta_color="inverse")
+with col4:
+    st.metric(label="Số sinh viên đạt (>= 5)", value=f"{sv_dat}/{len(df_students)}")
+
+# Tra cứu sinh viên
+st.subheader("🔍 Tra cứu thông tin sinh viên")
+selected_student = st.selectbox("Chọn sinh viên để xem chi tiết:", df_students['Họ và tên'])
+
+if selected_student:
+    student_info = df_students[df_students['Họ và tên'] == selected_student].iloc[0]
+    st.write(f"**Thông tin chi tiết của: {selected_student}**")
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("Chuyên cần", f"{student_info['Điểm chuyên cần']}")
+    c2.metric("Giữa kỳ", f"{student_info['Điểm giữa kỳ']}")
+    c3.metric("Cuối kỳ", f"{student_info['Điểm cuối kỳ']}")
+    c4.metric("Tổng kết", f"{student_info['Tong_ket']:.2f}")
+    c5.metric("Xếp loại", f"{student_info['Xep_loai']}")
+
+# Biểu đồ
+st.subheader("📊 Biểu đồ cột điểm tổng kết")
+fig, ax = plt.subplots(figsize=(10, 5))
+ax.bar(df_students['Họ và tên'], df_students['Tong_ket'], color='skyblue', edgecolor='black')
+ax.set_ylabel('Điểm tổng kết')
+ax.set_ylim(0, 10)
+plt.xticks(rotation=45, ha='right')
+ax.grid(axis='y', linestyle='--', alpha=0.7)
+
+for index, value in enumerate(df_students['Tong_ket']):
+    ax.text(index, value + 0.1, f"{value:.1f}", ha='center', fontsize=9)
+
+st.pyplot(fig)
+
+# Thông tin người tạo (Footer)
+st.markdown("---")
+st.markdown("<div style='text-align: center; color: gray; font-size: 12px;'>Tác giả: [Họ và tên của bạn] - MSSV: [MSSV của bạn]</div>", unsafe_allow_html=True)
+# Cài đặt các thư viện cần thiết
+!pip install -q streamlit
+!npm install -g localtunnel
+
+# Chạy Streamlit ngầm và mở cổng thông qua localtunnel
+import urllib
+print("IP để truy cập LocalTunnel (nhập vào ô Endpoint IP nếu được yêu cầu):")
+!curl ipv4.icanhazip.com
+
+get_ipython().system_raw('streamlit run app.py & npx localtunnel --port 8501 &')
